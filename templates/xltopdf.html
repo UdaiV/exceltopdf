@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="">
+    </head>
+    <body
+    style="
+      font-family: Arial, Helvetica, sans-serif;
+      padding: 2rem;
+      text-align: center;
+      background-color: #c2e094;
+    "
+  >
+  <div style="background-color: purple; padding:5rem">
+    <h2 style="color: white">Upload Excel or CSV File to Convert</h2>
+    <form action="/convert" method="post" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".xlsx,.xls,.xlsm" style="color: white;  cursor: pointer;
+    transition: background-color 0.2s ease; display: inline-block;
+    padding: 10px 20px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: bold;" required />
+      <button
+        type="submit"
+        style="
+          background-color: red;
+          color: white;
+          padding: 10px 20px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        "
+      >
+        Convert to PDF
+      </button>
+      <h4 style="color: white ; font-family:sans-serif; font-size: 10px; padding-left: 650px; ">Created by UV</h5>
+      <p style="color: white ; font-family:sans-serif;font-weight:bold;"> <span id="custom-timestamp"></span></p>
+
+<script>
+    function getCustomTimestamp() {
+        const now = new Date();
+        
+        const day = now.getDate(); // e.g., 6
+        
+        // Array to get short month name
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const month = months[now.getMonth()]; // e.g., "Aug"
+        
+        const year = now.getFullYear(); // 2026
+        
+        // Format time to 12-hour format with AM/PM
+        const timeOptions = { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true };
+        const timeString = now.toLocaleTimeString('en-US', timeOptions); // e.g., "9:20:00 PM"
+        
+        // Combine into your exact format
+        return `${day}- ${month} - ${year}, ${timeString}`;
+    }
+
+    // Inject into the HTML element
+    document.getElementById("custom-timestamp").textContent = getCustomTimestamp();
+</script>
+      </form>
+      
+      </div>
+
+    </div>
+       
+      
+    </body>
+</html>
