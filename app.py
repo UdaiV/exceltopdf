@@ -8,8 +8,8 @@ import uuid
 import shutil
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER='output'
+UPLOAD_FOLDER = "/tmp/uploads"
+OUTPUT_FOLDER = "/tmp/output"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
