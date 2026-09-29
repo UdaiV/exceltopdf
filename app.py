@@ -120,10 +120,14 @@ def convert():
             ]
 
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True
-            )
+                                cmd,
+                                capture_output=True,
+                                text=True,
+                                timeout=240
+                            )
+            print("STDOUT:", result.stdout)
+            print("STDERR:", result.stderr)
+            print("RETURN:", result.returncode)
 
             if result.returncode != 0:
                 print(result.stderr)
@@ -197,6 +201,12 @@ def download(filename):
         file_path,
         as_attachment=True
     )
+@app.route("/check")
+def check():
+    return {
+        "soffice": shutil.which("soffice"),
+        "libreoffice": shutil.which("libreoffice")
+    }
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
