@@ -1,12 +1,18 @@
 from flask import Flask, request, send_file
 import os
+from werkzeug.utils import secure_filename
 import subprocess
 import platform
-
+import zipfile
+import uuid
+import shutil
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'uploads'
+OUTPUT_FOLDER='output'
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 def get_libreoffice_path():
     # Check common Windows path first if running on Windows
@@ -18,7 +24,12 @@ def get_libreoffice_path():
         win_path_x86 = r'C:\Program Files (x86)\LibreOffice\program\soffice.exe'
         if os.path.exists(win_path_x86):
             return win_path_x86
-    return 'libreoffice'  # Linux/Mac default command
+    if shutil.which("soffice"):
+        return "soffice"
+    if shutil.which("libreoffice"):
+        return "libreoffice" 
+    raise Exception("LibreOffice not found")
+    
 
 def render_original_html(download_file=None, error_message=None):
     template_path = os.path.join('templates', 'xltopdf.html')
@@ -52,38 +63,142 @@ def home():
 
 @app.route('/convert', methods=['POST'])
 def convert():
-    if 'file' in request.files:
-        file = request.files['file']
-        if file.filename != '':
-            try:
-                input_path = os.path.join(UPLOAD_FOLDER, file.filename)
-                file.save(input_path)
-                
-                abs_input_path = os.path.abspath(input_path)
-                abs_output_dir = os.path.abspath(UPLOAD_FOLDER)
-                
-                # Get the correct executable path for the OS
-                lo_executable = get_libreoffice_path()
-                
-                cmd = [lo_executable, '--headless', '--convert-to', 'pdf', '--outdir', abs_output_dir, abs_input_path]
-                result = subprocess.run(cmd, capture_output=True, text=True)
-                
-                if result.returncode != 0:
-                    raise Exception(result.stderr or "LibreOffice conversion process returned an error.")
-                
-                base_name, _ = os.path.splitext(file.filename)
-                output_pdf_name = f"{base_name}.pdf"
-                
-                return render_original_html(download_file=output_pdf_name)
-            except Exception as e:
-                print("Error during conversion:", str(e))
-                return render_original_html(error_message=str(e))
-                
-    return home()
+    files=request.files.getlist("files")
+    if not files:
+        return render_original_html(error_message="No files Selected")
+    
+    session_id = str(uuid.uuid4())
+
+    upload_dir = os.path.join(
+        UPLOAD_FOLDER,
+        session_id
+    )
+
+    output_dir = os.path.join(
+        OUTPUT_FOLDER,
+        session_id
+    )
+
+    os.makedirs(upload_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+
+    try:
+
+        libreoffice = get_libreoffice_path()
+
+        pdf_files = []
+
+        for file in files:
+
+            if file.filename == "":
+                continue
+
+            filename = secure_filename(
+                file.filename
+            )
+
+            if not filename.lower().endswith(
+                (".xlsx", ".xls", ".xlsm")
+            ):
+                continue
+
+            input_path = os.path.join(
+                upload_dir,
+                filename
+            )
+
+            file.save(input_path)
+
+            cmd = [
+                libreoffice,
+                "--headless",
+                "--convert-to",
+                "pdf",
+                input_path,
+                "--outdir",
+                output_dir
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True
+            )
+
+            if result.returncode != 0:
+                print(result.stderr)
+                continue
+
+            pdf_name = (
+                os.path.splitext(filename)[0]
+                + ".pdf"
+            )
+
+            pdf_path = os.path.join(
+                output_dir,
+                pdf_name
+            )
+
+            if os.path.exists(pdf_path):
+                pdf_files.append(pdf_path)
+
+        if not pdf_files:
+            return render_original_html(
+                error_message="No PDFs generated"
+            )
+
+        zip_filename = (
+            f"converted_{session_id}.zip"
+        )
+
+        zip_path = os.path.join(
+            OUTPUT_FOLDER,
+            zip_filename
+        )
+
+        with zipfile.ZipFile(
+            zip_path,
+            "w",
+            zipfile.ZIP_DEFLATED
+        ) as zipf:
+
+            for pdf in pdf_files:
+
+                zipf.write(
+                    pdf,
+                    os.path.basename(pdf)
+                )
+
+        return render_original_html(
+            download_file=zip_filename
+        )
+
+    except Exception as e:
+
+        print(str(e))
+
+        return render_original_html(
+            error_message=str(e)
+        )
+
+
 
 @app.route('/download/<filename>')
 def download(filename):
-    return send_file(os.path.join(UPLOAD_FOLDER, filename), as_attachment=True)
+    file_path = os.path.join(
+        OUTPUT_FOLDER,
+        filename
+    )
+
+    if not os.path.exists(file_path):
+        return "File not found", 404
+
+    return send_file(
+        file_path,
+        as_attachment=True
+    )
 
 if __name__ == '__main__':
-    app.run(debug=True,host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True)
+    host="0.0.0.0",
+    port=int(os.environ.get("PORT", 5000))
